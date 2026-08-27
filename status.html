@@ -103,14 +103,12 @@
   if(!ticket || isNaN(ticket)){
     renderError();
   } else {
-    // Live-listen to this ticket's own document
     onSnapshot(doc(db, 'queue', String(ticket)), (snap)=>{
       if(!snap.exists()){ renderError(); return; }
       latestEntry = snap.data();
       recomputeAndRender();
     }, (err)=>{ console.error(err); renderError(); });
 
-    // Live-listen to everyone currently waiting, to keep position accurate
     const waitingQuery = query(collection(db, 'queue'), where('status', '==', 'waiting'));
     onSnapshot(waitingQuery, (snap)=>{
       window.__waitingSnapshot = snap;
@@ -135,7 +133,7 @@
   }
 
   function minsSince(iso){
-    return Math.max(0, Math.round((Date.now() - new Date(iso).getTime())/60000));
+    return '~' + Math.max(0, Math.round((Date.now() - new Date(iso).getTime())/60000));
   }
 
   function render(entry, position){
@@ -160,7 +158,7 @@
       `;
     } else if(entry.status === 'called'){
       panelClass = 'called';
-      statusLine = `You're up! Station ${entry.station ?? ''}`;
+      statusLine = "You're up!";
       statusSub = "Head to the Resolve Rehab booth now and check in with staff.";
     } else if(entry.status === 'in-treatment'){
       panelClass = 'treatment';
@@ -176,6 +174,8 @@
       statusSub = "Looks like we missed you. Head to the booth and check in with staff to get back in the queue.";
     }
 
+    const displayArea = Array.isArray(entry.area) ? entry.area.join(', ') : entry.area;
+
     content.innerHTML = `
       <div class="status-panel ${panelClass}">
         <div class="tk-label">Your Ticket</div>
@@ -185,16 +185,13 @@
         ${extraRow}
       </div>
       <div class="below">
-        <p>${entry.name.split(' ')[0]} · ${entry.area}${entry.team ? ' · '+entry.team : ''}</p>
+        <p>${entry.name.split(' ')[0]} · ${displayArea}${entry.team ? ' · '+entry.team : ''}</p>
       </div>
       ${entry.status==='waiting' || entry.status==='called' ? `
         <div class="refresh-note"><span class="dot"></span>Updating automatically</div>
       ` : ''}
     `;
   }
-
-  // No manual polling needed — the onSnapshot listeners above push
-  // updates the instant staff change something on the dashboard.
 </script>
 
 </body>

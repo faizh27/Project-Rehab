@@ -198,7 +198,7 @@
     </div>
 
     <div class="field" id="field-area">
-      <span class="group-label">Where does it hurt?</span>
+      <span class="group-label">Where does it hurt? <span class="opt">(select all that apply)</span></span>
       <div class="tap-grid" id="areaGrid">
         <button type="button" class="tap-btn" data-area="Ankle / Foot"><span class="dot"></span>Ankle / Foot</button>
         <button type="button" class="tap-btn" data-area="Knee"><span class="dot"></span>Knee</button>
@@ -211,7 +211,7 @@
         <button type="button" class="tap-btn urgent" data-area="Head / Possible Concussion"><span class="dot"></span>Head / Concussion</button>
         <button type="button" class="tap-btn" data-area="Other"><span class="dot"></span>Other</button>
       </div>
-      <div class="err" id="err-area">Pick the area that's affected.</div>
+      <div class="err" id="err-area">Pick at least one area that's affected.</div>
       <div class="urgent-note" id="urgentNote">
         <strong>Please tell a staff member right away</strong>
         Don't wait in the queue for head injuries or possible concussions — come find us at the booth now.
@@ -278,18 +278,28 @@
   const confirmUrgentNote = document.getElementById('confirmUrgentNote');
   const loadingOverlay = document.getElementById('loadingOverlay');
 
-  let selectedArea = null;
+  let selectedAreas = [];
   let selectedPain = null;
 
   areaGrid.addEventListener('click', (e)=>{
     const btn = e.target.closest('.tap-btn');
     if(!btn) return;
-    areaGrid.querySelectorAll('.tap-btn').forEach(b=>b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedArea = btn.dataset.area;
-    document.getElementById('field-area').classList.remove('invalid');
-    document.getElementById('err-area').classList.remove('show');
-    urgentNote.classList.toggle('show', selectedArea === 'Head / Possible Concussion');
+    const area = btn.dataset.area;
+    btn.classList.toggle('selected');
+
+    if(btn.classList.contains('selected')){
+      if(!selectedAreas.includes(area)) selectedAreas.push(area);
+    } else {
+      selectedAreas = selectedAreas.filter(a => a !== area);
+    }
+
+    const hasUrgent = selectedAreas.includes('Head / Possible Concussion');
+    urgentNote.classList.toggle('show', hasUrgent);
+
+    if(selectedAreas.length > 0){
+      document.getElementById('field-area').classList.remove('invalid');
+      document.getElementById('err-area').classList.remove('show');
+    }
   });
 
   painRow.addEventListener('click', (e)=>{
@@ -309,7 +319,7 @@
     toggleField('field-name', 'err-name', name.length > 0);
     toggleField('field-phone', 'err-phone', phone.length >= 7);
 
-    if(!selectedArea){
+    if(selectedAreas.length === 0){
       document.getElementById('field-area').classList.add('invalid');
       document.getElementById('err-area').classList.add('show');
       ok = false;
@@ -343,10 +353,9 @@
     const phone = document.getElementById('phone').value.trim();
     const team = document.getElementById('team').value.trim();
     const notes = document.getElementById('notes').value.trim();
-    const isUrgent = selectedArea === 'Head / Possible Concussion';
+    const isUrgent = selectedAreas.includes('Head / Possible Concussion');
 
     try{
-      // Atomically get + increment the shared ticket counter
       const counterRef = doc(db, 'meta', 'counter');
       const ticketNum = await runTransaction(db, async (tx)=>{
         const snap = await tx.get(counterRef);
@@ -360,18 +369,16 @@
         name,
         phone,
         team: team || null,
-        area: selectedArea,
+        area: selectedAreas,
         pain: selectedPain || null,
         notes: notes || null,
         priority: isUrgent,
         status: 'waiting',
-        station: null,
         submittedAt: new Date().toISOString()
       };
 
       await setDoc(doc(db, 'queue', String(ticketNum)), entry);
 
-      // Estimate position: count other entries still waiting, ahead of this ticket
       let position = 1;
       try{
         const waitingQuery = query(collection(db, 'queue'), where('status', '==', 'waiting'));
@@ -381,7 +388,6 @@
           if(data.ticket < ticketNum) position++;
         });
       }catch(err){
-        // if the query fails, fall back to a simple message
         position = null;
       }
 
@@ -407,7 +413,7 @@
 
   document.getElementById('newCheckinBtn').addEventListener('click', ()=>{
     form.reset();
-    selectedArea = null;
+    selectedAreas = [];
     selectedPain = null;
     areaGrid.querySelectorAll('.tap-btn').forEach(b=>b.classList.remove('selected'));
     painRow.querySelectorAll('.pain-btn').forEach(b=>b.classList.remove('selected'));

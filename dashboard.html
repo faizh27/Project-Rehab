@@ -61,27 +61,9 @@
   .summary-tile .num{font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:2.2rem; color:var(--forest); line-height:1;}
   .summary-tile .lbl{margin-top:4px; font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--ink-soft);}
 
-  /* ---- Stations ---- */
+  /* ---- Queue list ---- */
   .section-title{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
   .section-title h2{font-size:1.3rem;}
-  .station-settings{display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono', monospace; font-size:0.72rem; color:var(--ink-soft);}
-  .station-settings input{width:44px; padding:6px; border:1px solid var(--line); border-radius:3px; text-align:center; font-family:'JetBrains Mono', monospace;}
-
-  .station-row{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-bottom:34px;}
-  .station-card{background:var(--white); border:1px solid var(--line); border-radius:4px; padding:16px 18px;}
-  .station-card.occupied{border-color:var(--forest); background:#EAF0EC;}
-  .station-card .st-label{font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);}
-  .station-card .st-name{font-size:1.15rem; font-weight:700; margin-top:6px;}
-  .station-card .st-status{font-size:0.82rem; color:var(--ink-soft); margin-top:2px;}
-  .station-card .st-empty{color:#8A9791; font-style:italic; font-size:0.92rem; margin-top:6px;}
-  .station-card button{
-    margin-top:10px; width:100%; padding:9px; border:1px solid var(--forest); background:none;
-    color:var(--forest); border-radius:3px; font-family:'JetBrains Mono', monospace; font-size:0.7rem;
-    letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
-  }
-  .station-card button:hover{background:var(--forest); color:var(--white);}
-
-  /* ---- Queue list ---- */
   .tabs{display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--line);}
   .tab-btn{
     padding:10px 16px; background:none; border:none; cursor:pointer;
@@ -92,7 +74,7 @@
 
   .queue-card{
     background:var(--white); border:1px solid var(--line); border-radius:4px;
-    padding:18px 20px; margin-bottom:12px; display:grid; grid-template-columns:1fr auto; gap:16px; align-items:start;
+    padding:18px 20px; margin-bottom:12px; display:grid; grid-template-columns:1fr auto; gap:16px; align-items:center;
   }
   .queue-card.urgent{border-color:var(--alert); background:var(--alert-bg);}
   @media (max-width:640px){ .queue-card{grid-template-columns:1fr;} }
@@ -117,13 +99,7 @@
   .qc-meta a{color:var(--forest);}
   .qc-wait{font-weight:600;}
 
-  .qc-actions{display:flex; flex-direction:column; gap:8px; min-width:150px;}
-  .station-pick{display:flex; gap:6px; flex-wrap:wrap;}
-  .station-pick button{
-    padding:8px 12px; border:1px solid var(--forest); background:none; color:var(--forest);
-    border-radius:3px; font-family:'JetBrains Mono', monospace; font-size:0.72rem; cursor:pointer;
-  }
-  .station-pick button:hover{background:var(--forest); color:var(--white);}
+  .qc-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
   .act-btn{
     padding:10px 14px; border:none; border-radius:3px; cursor:pointer;
     font-family:'JetBrains Mono', monospace; font-size:0.72rem; letter-spacing:0.04em; text-transform:uppercase;
@@ -177,15 +153,6 @@
   </div>
 
   <div class="section-title">
-    <h2>Stations</h2>
-    <div class="station-settings">
-      <span>Stations:</span>
-      <input type="number" id="stationCount" min="1" max="8" value="2">
-    </div>
-  </div>
-  <div class="station-row" id="stationRow"></div>
-
-  <div class="section-title">
     <h2>Queue</h2>
   </div>
   <div class="tabs">
@@ -201,7 +168,7 @@
 <script type="module">
   import { db } from './firebase-config.js';
   import {
-    doc, setDoc, updateDoc, getDoc, onSnapshot, collection
+    doc, updateDoc, onSnapshot, collection
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   /* ====== CHANGE THIS CODE BEFORE THE EVENT ====== */
@@ -220,7 +187,6 @@
     }
   }
 
-  let stationCount = 2;
   let activeTab = 'active';
 
   const toastEl = document.getElementById('toast');
@@ -239,30 +205,6 @@
     });
   });
 
-  const stationInput = document.getElementById('stationCount');
-  stationInput.addEventListener('change', async ()=>{
-    let n = parseInt(stationInput.value, 10);
-    if(isNaN(n) || n < 1) n = 1;
-    if(n > 8) n = 8;
-    stationInput.value = n;
-    stationCount = n;
-    try{ await setDoc(doc(db, 'meta', 'settings'), { stationCount: n }); }catch(e){ console.error(e); }
-    renderFromCache();
-  });
-
-  function listenToStationSettings(){
-    onSnapshot(doc(db, 'meta', 'settings'), (snap)=>{
-      if(snap.exists()){
-        const s = snap.data();
-        if(s.stationCount){
-          stationCount = s.stationCount;
-          stationInput.value = s.stationCount;
-          renderAll();
-        }
-      }
-    }, (err)=>console.error(err));
-  }
-
   let cachedEntries = [];
 
   function listenToQueue(){
@@ -274,12 +216,11 @@
 
   function timeSince(iso){
     const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime())/60000));
-    return mins + ' min';
+    return '~' + mins + ' min';
   }
 
   function renderAll(){
     renderSummary();
-    renderStations();
     renderFromCache();
   }
 
@@ -292,34 +233,10 @@
     document.getElementById('sumCompleted').textContent = completed.length;
     if(waiting.length){
       const longest = Math.max(...waiting.map(e=> (Date.now()-new Date(e.submittedAt).getTime())/60000 ));
-      document.getElementById('sumLongest').textContent = Math.round(longest) + ' min';
+      document.getElementById('sumLongest').textContent = '~' + Math.round(longest) + ' min';
     } else {
       document.getElementById('sumLongest').textContent = '—';
     }
-  }
-
-  function renderStations(){
-    const row = document.getElementById('stationRow');
-    row.innerHTML = '';
-    for(let i=1; i<=stationCount; i++){
-      const occ = cachedEntries.find(e => e.station === i && (e.status==='called' || e.status==='in-treatment'));
-      const card = document.createElement('div');
-      card.className = 'station-card' + (occ ? ' occupied' : '');
-      if(occ){
-        card.innerHTML = `
-          <div class="st-label">Station ${i}</div>
-          <div class="st-name">#${occ.ticket} · ${escapeHtml(occ.name)}</div>
-          <div class="st-status">${occ.status === 'called' ? 'Called — waiting to start' : 'In treatment'}</div>
-          ${occ.status === 'in-treatment' ? `<button data-complete="${occ.ticket}">Mark Complete</button>` : ''}
-        `;
-      } else {
-        card.innerHTML = `<div class="st-label">Station ${i}</div><div class="st-empty">Available</div>`;
-      }
-      row.appendChild(card);
-    }
-    row.querySelectorAll('[data-complete]').forEach(btn=>{
-      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.complete,10), {status:'completed', completedAt:new Date().toISOString()}, 'Marked complete'));
-    });
   }
 
   function escapeHtml(str){
@@ -360,16 +277,31 @@
 
       let actionsHtml = '';
       if(entry.status === 'waiting'){
-        let stationBtns = '';
-        for(let i=1;i<=stationCount;i++){ stationBtns += `<button data-call="${entry.ticket}" data-station="${i}">Station ${i}</button>`; }
-        actionsHtml = `<div class="station-pick">${stationBtns}</div><button class="act-btn ghost" data-noshow="${entry.ticket}">No-Show</button>`;
+        actionsHtml = `
+          <button class="act-btn primary" data-call="${entry.ticket}">Call Patient</button>
+          <button class="act-btn ghost" data-noshow="${entry.ticket}">No-Show</button>
+        `;
       } else if(entry.status === 'called'){
-        actionsHtml = `<button class="act-btn primary" data-start="${entry.ticket}">Start Treatment</button><button class="act-btn ghost" data-noshow="${entry.ticket}">No-Show</button>`;
+        actionsHtml = `
+          <button class="act-btn primary" data-start="${entry.ticket}">Start Treatment</button>
+          <button class="act-btn ghost" data-noshow="${entry.ticket}">No-Show</button>
+        `;
       } else if(entry.status === 'in-treatment'){
         actionsHtml = `<button class="act-btn primary" data-complete="${entry.ticket}">Complete</button>`;
       } else {
         actionsHtml = `<button class="act-btn ghost" data-reopen="${entry.ticket}">Reopen</button>`;
       }
+
+      const areas = Array.isArray(entry.area) ? entry.area : [entry.area];
+      const areaBadges = areas
+        .filter(Boolean)
+        .map(area => {
+          if (area === 'Head / Possible Concussion') {
+            return '<span class="badge urgent-badge">Head / Concussion</span>';
+          }
+          return `<span class="badge">${escapeHtml(area)}</span>`;
+        })
+        .join(' ');
 
       card.innerHTML = `
         <div class="qc-main">
@@ -379,9 +311,9 @@
             ${entry.team ? `<span class="qc-team">${escapeHtml(entry.team)}</span>` : ''}
           </div>
           <div class="qc-badges">
-            ${entry.priority ? '<span class="badge urgent-badge">Head / Concussion</span>' : `<span class="badge">${escapeHtml(entry.area)}</span>`}
+            ${areaBadges}
             ${entry.pain ? `<span class="badge pain">Pain ${entry.pain}/5</span>` : ''}
-            <span class="badge ${statusBadgeClass}">${statusLabel}${entry.station ? ' · Station '+entry.station : ''}</span>
+            <span class="badge ${statusBadgeClass}">${statusLabel}</span>
           </div>
           ${entry.notes ? `<div class="qc-notes">"${escapeHtml(entry.notes)}"</div>` : ''}
           <div class="qc-meta">
@@ -395,7 +327,7 @@
     });
 
     container.querySelectorAll('[data-call]').forEach(btn=>{
-      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.call,10), {status:'called', station:parseInt(btn.dataset.station,10), calledAt:new Date().toISOString()}, 'Calling #'+btn.dataset.call));
+      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.call,10), {status:'called', calledAt:new Date().toISOString()}, 'Calling #'+btn.dataset.call));
     });
     container.querySelectorAll('[data-start]').forEach(btn=>{
       btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.start,10), {status:'in-treatment', startedAt:new Date().toISOString()}, 'Treatment started'));
@@ -407,7 +339,7 @@
       btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.noshow,10), {status:'no-show'}, 'Marked no-show'));
     });
     container.querySelectorAll('[data-reopen]').forEach(btn=>{
-      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.reopen,10), {status:'waiting', station:null}, 'Returned to queue'));
+      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.reopen,10), {status:'waiting'}, 'Returned to queue'));
     });
   }
 
@@ -415,7 +347,6 @@
     try{
       await updateDoc(doc(db, 'queue', String(ticket)), changes);
       toast(toastMsg);
-      // No manual re-fetch needed — the onSnapshot listener updates the view automatically.
     }catch(e){
       console.error(e);
       toast('Update failed — try again');
@@ -423,7 +354,6 @@
   }
 
   function startListening(){
-    listenToStationSettings();
     listenToQueue();
   }
 </script>
