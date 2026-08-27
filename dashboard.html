@@ -198,7 +198,12 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+  import { db } from './firebase-config.js';
+  import {
+    doc, setDoc, updateDoc, getDoc, onSnapshot, collection
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
   /* ====== CHANGE THIS CODE BEFORE THE EVENT ====== */
   const STAFF_PIN = "2026";
   /* ================================================ */
@@ -209,7 +214,7 @@
     const val = document.getElementById('pinInput').value.trim();
     if(val === STAFF_PIN){
       document.getElementById('pinGate').style.display = 'none';
-      startPolling();
+      startListening();
     } else {
       document.getElementById('pinErr').classList.add('show');
     }
@@ -217,7 +222,6 @@
 
   let stationCount = 2;
   let activeTab = 'active';
-  let pollTimer = null;
 
   const toastEl = document.getElementById('toast');
   function toast(msg){
@@ -242,39 +246,30 @@
     if(n > 8) n = 8;
     stationInput.value = n;
     stationCount = n;
-    try{ await window.storage.set('queue-settings', JSON.stringify({stationCount:n}), true); }catch(e){}
+    try{ await setDoc(doc(db, 'meta', 'settings'), { stationCount: n }); }catch(e){ console.error(e); }
     renderFromCache();
   });
 
-  async function loadStationSettings(){
-    try{
-      const res = await window.storage.get('queue-settings', true);
-      if(res){
-        const s = JSON.parse(res.value);
-        if(s.stationCount){ stationCount = s.stationCount; stationInput.value = s.stationCount; }
+  function listenToStationSettings(){
+    onSnapshot(doc(db, 'meta', 'settings'), (snap)=>{
+      if(snap.exists()){
+        const s = snap.data();
+        if(s.stationCount){
+          stationCount = s.stationCount;
+          stationInput.value = s.stationCount;
+          renderAll();
+        }
       }
-    }catch(e){ /* no settings saved yet, use default */ }
+    }, (err)=>console.error(err));
   }
 
   let cachedEntries = [];
 
-  async function fetchQueue(){
-    try{
-      const list = await window.storage.list('queue:', true);
-      const entries = [];
-      if(list && list.keys){
-        for(const k of list.keys){
-          try{
-            const item = await window.storage.get(k, true);
-            if(item){ entries.push(JSON.parse(item.value)); }
-          }catch(e){ /* skip unreadable entry */ }
-        }
-      }
-      cachedEntries = entries;
+  function listenToQueue(){
+    onSnapshot(collection(db, 'queue'), (snap)=>{
+      cachedEntries = snap.docs.map(d=>d.data());
       renderAll();
-    }catch(e){
-      console.error('Queue fetch failed', e);
-    }
+    }, (err)=>console.error('Queue listener failed', err));
   }
 
   function timeSince(iso){
@@ -418,22 +413,18 @@
 
   async function updateEntry(ticket, changes, toastMsg){
     try{
-      const res = await window.storage.get('queue:'+ticket, true);
-      if(!res) return;
-      const entry = JSON.parse(res.value);
-      Object.assign(entry, changes);
-      await window.storage.set('queue:'+ticket, JSON.stringify(entry), true);
+      await updateDoc(doc(db, 'queue', String(ticket)), changes);
       toast(toastMsg);
-      fetchQueue();
+      // No manual re-fetch needed — the onSnapshot listener updates the view automatically.
     }catch(e){
       console.error(e);
       toast('Update failed — try again');
     }
   }
 
-  function startPolling(){
-    loadStationSettings().then(fetchQueue);
-    pollTimer = setInterval(fetchQueue, 4000);
+  function startListening(){
+    listenToStationSettings();
+    listenToQueue();
   }
 </script>
 

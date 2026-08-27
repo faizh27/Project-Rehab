@@ -265,7 +265,12 @@
 
 <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
 
-<script>
+<script type="module">
+  import { db } from './firebase-config.js';
+  import {
+    doc, runTransaction, setDoc, collection, getDocs, query, where
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
   const form = document.getElementById('intakeForm');
   const areaGrid = document.getElementById('areaGrid');
   const painRow = document.getElementById('painRow');
@@ -341,15 +346,14 @@
     const isUrgent = selectedArea === 'Head / Possible Concussion';
 
     try{
-      // Get + increment shared ticket counter
-      let ticketNum;
-      try{
-        const counterRes = await window.storage.get('queue-counter', true);
-        ticketNum = counterRes ? parseInt(counterRes.value, 10) + 1 : 1;
-      }catch(err){
-        ticketNum = 1;
-      }
-      await window.storage.set('queue-counter', String(ticketNum), true);
+      // Atomically get + increment the shared ticket counter
+      const counterRef = doc(db, 'meta', 'counter');
+      const ticketNum = await runTransaction(db, async (tx)=>{
+        const snap = await tx.get(counterRef);
+        const next = snap.exists() ? (snap.data().value || 0) + 1 : 1;
+        tx.set(counterRef, { value: next });
+        return next;
+      });
 
       const entry = {
         ticket: ticketNum,
@@ -365,24 +369,19 @@
         submittedAt: new Date().toISOString()
       };
 
-      await window.storage.set('queue:' + ticketNum, JSON.stringify(entry), true);
+      await setDoc(doc(db, 'queue', String(ticketNum)), entry);
 
-      // Estimate position: count other entries still waiting
+      // Estimate position: count other entries still waiting, ahead of this ticket
       let position = 1;
       try{
-        const list = await window.storage.list('queue:', true);
-        if(list && list.keys){
-          for(const k of list.keys){
-            if(k === 'queue:' + ticketNum) continue;
-            const item = await window.storage.get(k, true);
-            if(item){
-              const data = JSON.parse(item.value);
-              if(data.status === 'waiting' && data.ticket < ticketNum) position++;
-            }
-          }
-        }
+        const waitingQuery = query(collection(db, 'queue'), where('status', '==', 'waiting'));
+        const snap = await getDocs(waitingQuery);
+        snap.forEach(d=>{
+          const data = d.data();
+          if(data.ticket < ticketNum) position++;
+        });
       }catch(err){
-        // if listing fails, fall back to a simple message
+        // if the query fails, fall back to a simple message
         position = null;
       }
 

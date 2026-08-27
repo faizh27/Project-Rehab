@@ -78,11 +78,17 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+  import { db } from './firebase-config.js';
+  import {
+    doc, onSnapshot, collection, query, where
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
   const params = new URLSearchParams(window.location.search);
   const ticket = parseInt(params.get('ticket'), 10);
   const content = document.getElementById('content');
-  let pollTimer = null;
+
+  let latestEntry = null;
 
   function renderError(){
     content.innerHTML = `
@@ -94,37 +100,38 @@
     `;
   }
 
-  async function fetchStatus(){
-    if(!ticket || isNaN(ticket)){ renderError(); return; }
-    try{
-      const res = await window.storage.get('queue:'+ticket, true);
-      if(!res){ renderError(); return; }
-      const entry = JSON.parse(res.value);
-      await computePositionAndRender(entry);
-    }catch(e){
-      renderError();
-    }
+  if(!ticket || isNaN(ticket)){
+    renderError();
+  } else {
+    // Live-listen to this ticket's own document
+    onSnapshot(doc(db, 'queue', String(ticket)), (snap)=>{
+      if(!snap.exists()){ renderError(); return; }
+      latestEntry = snap.data();
+      recomputeAndRender();
+    }, (err)=>{ console.error(err); renderError(); });
+
+    // Live-listen to everyone currently waiting, to keep position accurate
+    const waitingQuery = query(collection(db, 'queue'), where('status', '==', 'waiting'));
+    onSnapshot(waitingQuery, (snap)=>{
+      window.__waitingSnapshot = snap;
+      recomputeAndRender();
+    }, (err)=>{ console.error(err); });
   }
 
-  async function computePositionAndRender(entry){
+  function recomputeAndRender(){
+    if(!latestEntry) return;
     let position = null;
-    if(entry.status === 'waiting'){
+    if(latestEntry.status === 'waiting'){
       position = 1;
-      try{
-        const list = await window.storage.list('queue:', true);
-        if(list && list.keys){
-          for(const k of list.keys){
-            if(k === 'queue:'+entry.ticket) continue;
-            const item = await window.storage.get(k, true);
-            if(item){
-              const other = JSON.parse(item.value);
-              if(other.status === 'waiting' && other.ticket < entry.ticket) position++;
-            }
-          }
-        }
-      }catch(e){ position = null; }
+      const snap = window.__waitingSnapshot;
+      if(snap){
+        snap.forEach(d=>{
+          const other = d.data();
+          if(other.ticket !== latestEntry.ticket && other.ticket < latestEntry.ticket) position++;
+        });
+      }
     }
-    render(entry, position);
+    render(latestEntry, position);
   }
 
   function minsSince(iso){
@@ -186,8 +193,8 @@
     `;
   }
 
-  fetchStatus();
-  pollTimer = setInterval(fetchStatus, 5000);
+  // No manual polling needed — the onSnapshot listeners above push
+  // updates the instant staff change something on the dashboard.
 </script>
 
 </body>
