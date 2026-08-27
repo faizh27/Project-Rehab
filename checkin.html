@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Resolve Rehab — Check In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2A28;
+    --ink-soft:#43574F;
+    --stone:#E9E4D6;
+    --mist:#DCE3DD;
+    --white:#FBFAF6;
+    --forest:#2F5D50;
+    --forest-dark:#213F37;
+    --gold:#B4842E;
+    --gold-light:#D9AE6C;
+    --alert:#A8442E;
+    --alert-bg:#F3E2DC;
+    --line:rgba(27,42,40,0.14);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    background:var(--stone);
+    color:var(--ink);
+    font-family:'Source Sans 3', sans-serif;
+    min-height:100vh;
+    padding-bottom:40px;
+  }
+  h1,h2{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800; text-transform:uppercase; letter-spacing:0.01em;
+    line-height:0.96; margin:0;
+  }
+  .topbar{
+    background:var(--forest-dark); color:var(--white);
+    padding:18px 20px; display:flex; align-items:center; gap:10px;
+  }
+  .topbar svg{flex-shrink:0;}
+  .topbar .name{font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:1.25rem; text-transform:uppercase;}
+  .topbar .tag{font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:0.08em; color:var(--gold-light); text-transform:uppercase; margin-top:1px;}
+
+  .wrap{max-width:520px; margin:0 auto; padding:26px 18px 0;}
+
+  .intro{margin-bottom:22px;}
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:0.7rem; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--forest); margin-bottom:8px; display:block;
+  }
+  .intro h1{font-size:1.9rem;}
+  .intro p{margin-top:10px; color:var(--ink-soft); font-size:0.98rem; line-height:1.5;}
+
+  form{display:flex; flex-direction:column; gap:22px;}
+
+  .field label, .group-label{
+    display:block; font-family:'JetBrains Mono', monospace; font-size:0.72rem;
+    letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:9px;
+  }
+  .field label .opt, .group-label .opt{color:#8A9791; font-style:normal; text-transform:none; letter-spacing:0;}
+
+  input[type="text"], input[type="tel"], textarea{
+    width:100%; font-family:'Source Sans 3', sans-serif; font-size:1.05rem;
+    padding:14px 15px; border:1px solid var(--line); border-radius:3px;
+    background:var(--white); color:var(--ink);
+  }
+  input:focus, textarea:focus{outline:2px solid var(--gold); outline-offset:1px; border-color:var(--gold);}
+  textarea{resize:vertical; min-height:80px; font-size:1rem;}
+
+  /* Tap-grid selectors */
+  .tap-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .tap-btn{
+    font-family:'Source Sans 3', sans-serif; font-size:0.95rem; font-weight:600;
+    text-align:left; padding:14px 14px; border-radius:3px;
+    border:1.5px solid var(--line); background:var(--white); color:var(--ink);
+    cursor:pointer; transition:border-color .15s ease, background .15s ease;
+    display:flex; align-items:center; gap:8px;
+  }
+  .tap-btn .dot{width:8px; height:8px; border-radius:50%; background:var(--line); flex-shrink:0; transition:background .15s ease;}
+  .tap-btn.selected{border-color:var(--forest); background:#EAF0EC;}
+  .tap-btn.selected .dot{background:var(--forest);}
+  .tap-btn.urgent.selected{border-color:var(--alert); background:var(--alert-bg);}
+  .tap-btn.urgent.selected .dot{background:var(--alert);}
+
+  .pain-row{display:flex; gap:8px;}
+  .pain-btn{
+    flex:1; aspect-ratio:1; border-radius:3px; border:1.5px solid var(--line);
+    background:var(--white); font-family:'JetBrains Mono', monospace; font-weight:600;
+    font-size:1.1rem; color:var(--ink-soft); cursor:pointer; transition:all .15s ease;
+  }
+  .pain-btn.selected{background:var(--gold); border-color:var(--gold); color:var(--white);}
+  .pain-scale-labels{display:flex; justify-content:space-between; margin-top:6px; font-family:'JetBrains Mono', monospace; font-size:0.68rem; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.03em;}
+
+  .urgent-note{
+    display:none; background:var(--alert-bg); border:1px solid rgba(168,68,46,0.3);
+    border-radius:3px; padding:14px 16px; font-size:0.92rem; color:var(--alert);
+    line-height:1.5; margin-top:10px;
+  }
+  .urgent-note.show{display:block;}
+  .urgent-note strong{display:block; margin-bottom:3px; font-family:'JetBrains Mono', monospace; font-size:0.72rem; letter-spacing:0.05em; text-transform:uppercase;}
+
+  .consent{
+    display:flex; align-items:flex-start; gap:12px; background:var(--white);
+    border:1px solid var(--line); border-radius:3px; padding:16px;
+  }
+  .consent input{width:20px; height:20px; margin-top:1px; flex-shrink:0; accent-color:var(--forest);}
+  .consent label{font-size:0.88rem; color:var(--ink-soft); line-height:1.5;}
+
+  .submit-btn{
+    width:100%; padding:18px; border:none; border-radius:3px;
+    background:var(--forest); color:var(--white); font-family:'JetBrains Mono', monospace;
+    font-size:0.85rem; letter-spacing:0.07em; text-transform:uppercase; font-weight:600;
+    cursor:pointer; transition:background .15s ease, transform .1s ease;
+  }
+  .submit-btn:active{transform:scale(0.98);}
+  .submit-btn:disabled{background:#9AAAA4; cursor:not-allowed;}
+  .submit-btn:not(:disabled):hover{background:var(--forest-dark);}
+
+  .err{
+    font-size:0.82rem; color:var(--alert); margin-top:6px; display:none;
+  }
+  .err.show{display:block;}
+  .field.invalid input{border-color:var(--alert);}
+
+  /* Confirmation screen */
+  .confirm{
+    display:none; text-align:center; padding:50px 20px 20px;
+  }
+  .confirm.show{display:block;}
+  form.hide{display:none;}
+  .ticket{
+    background:var(--forest-dark); color:var(--white); border-radius:4px;
+    padding:32px 24px; margin:20px 0 26px;
+  }
+  .ticket .tk-label{font-family:'JetBrains Mono', monospace; font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold-light);}
+  .ticket .tk-num{font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:4.5rem; line-height:1; margin:6px 0;}
+  .ticket .tk-pos{font-size:0.98rem; color:rgba(251,250,246,0.85); margin-top:8px;}
+  .confirm h2{font-size:1.6rem;}
+  .confirm p{margin-top:12px; color:var(--ink-soft); font-size:0.98rem; line-height:1.6;}
+  .confirm .urgent-note{margin-top:20px; text-align:left;}
+  .new-checkin{
+    margin-top:26px; background:none; border:1px solid var(--line); color:var(--ink-soft);
+    font-family:'JetBrains Mono', monospace; font-size:0.75rem; letter-spacing:0.05em;
+    text-transform:uppercase; padding:12px 20px; border-radius:3px; cursor:pointer;
+  }
+
+  .loading-overlay{
+    position:fixed; inset:0; background:rgba(27,42,40,0.4); display:none;
+    align-items:center; justify-content:center; z-index:50;
+  }
+  .loading-overlay.show{display:flex;}
+  .spinner{
+    width:34px; height:34px; border:3px solid rgba(251,250,246,0.3);
+    border-top-color:var(--white); border-radius:50%; animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion: reduce){ .spinner{animation:none;} }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <svg width="26" height="26" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 24L11 7L15.5 15L18.5 10L28 24H2Z" fill="#D9AE6C"/>
+  </svg>
+  <div>
+    <div class="name">Resolve Rehab</div>
+    <div class="tag">Tournament Check-In</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <form id="intakeForm">
+    <div class="intro">
+      <span class="eyebrow">Get Checked Out</span>
+      <h1>Let's get you seen.</h1>
+      <p>Fill this out and we'll add you to the queue. You'll get a ticket number — no need to stand in line, we'll be ready when it's your turn.</p>
+    </div>
+
+    <div class="field" id="field-name">
+      <label for="name">Full name</label>
+      <input type="text" id="name" autocomplete="name" placeholder="Jordan Rivera">
+      <div class="err" id="err-name">Enter your name so we can call you.</div>
+    </div>
+
+    <div class="field" id="field-phone">
+      <label for="phone">Phone number</label>
+      <input type="tel" id="phone" autocomplete="tel" placeholder="(604) 555-0142" inputmode="tel">
+      <div class="err" id="err-phone">Enter a phone number so we can reach you.</div>
+    </div>
+
+    <div class="field">
+      <label for="team">Team / sport <span class="opt">(optional)</span></label>
+      <input type="text" id="team" placeholder="e.g. Surrey U16 Soccer">
+    </div>
+
+    <div class="field" id="field-area">
+      <span class="group-label">Where does it hurt?</span>
+      <div class="tap-grid" id="areaGrid">
+        <button type="button" class="tap-btn" data-area="Ankle / Foot"><span class="dot"></span>Ankle / Foot</button>
+        <button type="button" class="tap-btn" data-area="Knee"><span class="dot"></span>Knee</button>
+        <button type="button" class="tap-btn" data-area="Hip / Groin"><span class="dot"></span>Hip / Groin</button>
+        <button type="button" class="tap-btn" data-area="Hamstring / Thigh"><span class="dot"></span>Hamstring / Thigh</button>
+        <button type="button" class="tap-btn" data-area="Shoulder / Arm"><span class="dot"></span>Shoulder / Arm</button>
+        <button type="button" class="tap-btn" data-area="Wrist / Hand"><span class="dot"></span>Wrist / Hand</button>
+        <button type="button" class="tap-btn" data-area="Back / Neck"><span class="dot"></span>Back / Neck</button>
+        <button type="button" class="tap-btn" data-area="Cramping"><span class="dot"></span>Cramping</button>
+        <button type="button" class="tap-btn urgent" data-area="Head / Possible Concussion"><span class="dot"></span>Head / Concussion</button>
+        <button type="button" class="tap-btn" data-area="Other"><span class="dot"></span>Other</button>
+      </div>
+      <div class="err" id="err-area">Pick the area that's affected.</div>
+      <div class="urgent-note" id="urgentNote">
+        <strong>Please tell a staff member right away</strong>
+        Don't wait in the queue for head injuries or possible concussions — come find us at the booth now.
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="group-label">Pain level right now</span>
+      <div class="pain-row" id="painRow">
+        <button type="button" class="pain-btn" data-pain="1">1</button>
+        <button type="button" class="pain-btn" data-pain="2">2</button>
+        <button type="button" class="pain-btn" data-pain="3">3</button>
+        <button type="button" class="pain-btn" data-pain="4">4</button>
+        <button type="button" class="pain-btn" data-pain="5">5</button>
+      </div>
+      <div class="pain-scale-labels"><span>Mild</span><span>Severe</span></div>
+    </div>
+
+    <div class="field">
+      <label for="notes">Anything else we should know <span class="opt">(optional)</span></label>
+      <textarea id="notes" placeholder="e.g. Rolled my ankle during the last match"></textarea>
+    </div>
+
+    <div class="consent">
+      <input type="checkbox" id="consent">
+      <label for="consent">I consent to receiving a kinesiology assessment and treatment at this event.</label>
+    </div>
+    <div class="err" id="err-consent" style="margin-top:-14px;">Please check the consent box to continue.</div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Join the Queue</button>
+  </form>
+
+  <div class="confirm" id="confirmScreen">
+    <span class="eyebrow">You're Checked In</span>
+    <div class="ticket">
+      <div class="tk-label">Your Ticket</div>
+      <div class="tk-num" id="ticketNum">#00</div>
+      <div class="tk-pos" id="ticketPos">You're next in line.</div>
+    </div>
+    <h2>Sit tight, <span id="confirmName">friend</span>.</h2>
+    <p>Keep your phone handy — a staff member will call your name when it's your turn. Feel free to head back to the field; you don't need to wait at the booth.</p>
+    <div class="urgent-note" id="confirmUrgentNote">
+      <strong>Please tell a staff member right away</strong>
+      Head injuries and possible concussions shouldn't wait in the queue — come find us at the booth now.
+    </div>
+    <a class="new-checkin" id="statusLink" style="display:inline-block; text-decoration:none; background:var(--forest); color:var(--white); border-color:var(--forest); margin-right:10px;">View Live Status</a>
+    <button type="button" class="new-checkin" id="newCheckinBtn">Check In Someone Else</button>
+  </div>
+
+</div>
+
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+<script>
+  const form = document.getElementById('intakeForm');
+  const areaGrid = document.getElementById('areaGrid');
+  const painRow = document.getElementById('painRow');
+  const urgentNote = document.getElementById('urgentNote');
+  const confirmUrgentNote = document.getElementById('confirmUrgentNote');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+
+  let selectedArea = null;
+  let selectedPain = null;
+
+  areaGrid.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.tap-btn');
+    if(!btn) return;
+    areaGrid.querySelectorAll('.tap-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedArea = btn.dataset.area;
+    document.getElementById('field-area').classList.remove('invalid');
+    document.getElementById('err-area').classList.remove('show');
+    urgentNote.classList.toggle('show', selectedArea === 'Head / Possible Concussion');
+  });
+
+  painRow.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.pain-btn');
+    if(!btn) return;
+    painRow.querySelectorAll('.pain-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedPain = btn.dataset.pain;
+  });
+
+  function validate(){
+    let ok = true;
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const consent = document.getElementById('consent').checked;
+
+    toggleField('field-name', 'err-name', name.length > 0);
+    toggleField('field-phone', 'err-phone', phone.length >= 7);
+
+    if(!selectedArea){
+      document.getElementById('field-area').classList.add('invalid');
+      document.getElementById('err-area').classList.add('show');
+      ok = false;
+    }
+    if(!consent){
+      document.getElementById('err-consent').classList.add('show');
+      ok = false;
+    } else {
+      document.getElementById('err-consent').classList.remove('show');
+    }
+    if(name.length===0 || phone.length<7) ok = false;
+    return ok;
+  }
+
+  function toggleField(fieldId, errId, isValid){
+    const field = document.getElementById(fieldId);
+    const err = document.getElementById(errId);
+    if(isValid){ field.classList.remove('invalid'); err.classList.remove('show'); }
+    else { field.classList.add('invalid'); err.classList.add('show'); }
+  }
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    if(!validate()) return;
+
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    loadingOverlay.classList.add('show');
+
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const team = document.getElementById('team').value.trim();
+    const notes = document.getElementById('notes').value.trim();
+    const isUrgent = selectedArea === 'Head / Possible Concussion';
+
+    try{
+      // Get + increment shared ticket counter
+      let ticketNum;
+      try{
+        const counterRes = await window.storage.get('queue-counter', true);
+        ticketNum = counterRes ? parseInt(counterRes.value, 10) + 1 : 1;
+      }catch(err){
+        ticketNum = 1;
+      }
+      await window.storage.set('queue-counter', String(ticketNum), true);
+
+      const entry = {
+        ticket: ticketNum,
+        name,
+        phone,
+        team: team || null,
+        area: selectedArea,
+        pain: selectedPain || null,
+        notes: notes || null,
+        priority: isUrgent,
+        status: 'waiting',
+        station: null,
+        submittedAt: new Date().toISOString()
+      };
+
+      await window.storage.set('queue:' + ticketNum, JSON.stringify(entry), true);
+
+      // Estimate position: count other entries still waiting
+      let position = 1;
+      try{
+        const list = await window.storage.list('queue:', true);
+        if(list && list.keys){
+          for(const k of list.keys){
+            if(k === 'queue:' + ticketNum) continue;
+            const item = await window.storage.get(k, true);
+            if(item){
+              const data = JSON.parse(item.value);
+              if(data.status === 'waiting' && data.ticket < ticketNum) position++;
+            }
+          }
+        }
+      }catch(err){
+        // if listing fails, fall back to a simple message
+        position = null;
+      }
+
+      document.getElementById('statusLink').href = 'status.html?ticket=' + ticketNum;
+      document.getElementById('ticketNum').textContent = '#' + String(ticketNum).padStart(2,'0');
+      document.getElementById('confirmName').textContent = name.split(' ')[0];
+      document.getElementById('ticketPos').textContent = position
+        ? (position === 1 ? "You're next in line." : `${position} ${position===1?'person':'people'} ahead of you.`)
+        : "You're checked in.";
+      confirmUrgentNote.classList.toggle('show', isUrgent);
+
+      form.classList.add('hide');
+      document.getElementById('confirmScreen').classList.add('show');
+
+    }catch(err){
+      alert('Something went wrong submitting your check-in. Please try again, or tell a staff member at the booth.');
+      console.error(err);
+    }finally{
+      submitBtn.disabled = false;
+      loadingOverlay.classList.remove('show');
+    }
+  });
+
+  document.getElementById('newCheckinBtn').addEventListener('click', ()=>{
+    form.reset();
+    selectedArea = null;
+    selectedPain = null;
+    areaGrid.querySelectorAll('.tap-btn').forEach(b=>b.classList.remove('selected'));
+    painRow.querySelectorAll('.pain-btn').forEach(b=>b.classList.remove('selected'));
+    urgentNote.classList.remove('show');
+    document.getElementById('confirmScreen').classList.remove('show');
+    form.classList.remove('hide');
+    window.scrollTo({top:0, behavior:'auto'});
+  });
+</script>
+
+</body>
+</html>

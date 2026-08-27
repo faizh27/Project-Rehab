@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resolve Rehab — Your Status</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2A28; --ink-soft:#43574F;
+    --stone:#E9E4D6; --white:#FBFAF6;
+    --forest:#2F5D50; --forest-dark:#213F37;
+    --gold:#B4842E; --gold-light:#D9AE6C;
+    --alert:#A8442E; --alert-bg:#F3E2DC;
+    --line:rgba(27,42,40,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--stone); color:var(--ink);
+    font-family:'Source Sans 3', sans-serif; min-height:100vh;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  h1,h2{font-family:'Big Shoulders Display', sans-serif; font-weight:800; text-transform:uppercase; letter-spacing:0.01em; line-height:0.96; margin:0;}
+  .card{max-width:420px; width:100%;}
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:0.7rem; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--forest); display:block; text-align:center; margin-bottom:10px;
+  }
+  .status-panel{
+    background:var(--forest-dark); color:var(--white); border-radius:5px;
+    padding:36px 28px; text-align:center; transition:background .3s ease;
+  }
+  .status-panel.called{background:var(--gold); }
+  .status-panel.treatment{background:var(--forest);}
+  .status-panel.completed{background:var(--forest-dark);}
+  .status-panel.urgent{background:var(--alert);}
+
+  .tk-label{font-family:'JetBrains Mono', monospace; font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase; color:rgba(251,250,246,0.7);}
+  .tk-num{font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:3.6rem; line-height:1; margin:6px 0 10px;}
+  .status-line{font-size:1.15rem; font-weight:600;}
+  .status-sub{margin-top:8px; font-size:0.92rem; color:rgba(251,250,246,0.85); line-height:1.5;}
+
+  .pos-row{display:flex; justify-content:center; gap:26px; margin-top:22px;}
+  .pos-item .n{font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:1.8rem;}
+  .pos-item .l{font-family:'JetBrains Mono', monospace; font-size:0.65rem; letter-spacing:0.05em; text-transform:uppercase; color:var(--ink-soft); margin-top:2px;}
+
+  .below{margin-top:22px; text-align:center;}
+  .below p{color:var(--ink-soft); font-size:0.92rem; line-height:1.55;}
+
+  .refresh-note{
+    display:flex; align-items:center; justify-content:center; gap:6px; margin-top:20px;
+    font-family:'JetBrains Mono', monospace; font-size:0.68rem; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.04em;
+  }
+  .refresh-note .dot{width:6px; height:6px; border-radius:50%; background:var(--forest); animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.3;}}
+
+  .error-state{text-align:center;}
+  .error-state h1{font-size:1.6rem;}
+  .error-state p{margin-top:12px; color:var(--ink-soft); font-size:0.96rem; line-height:1.55;}
+  .home-link{
+    display:inline-block; margin-top:20px; padding:12px 22px; background:var(--forest); color:var(--white);
+    border-radius:3px; font-family:'JetBrains Mono', monospace; font-size:0.75rem; letter-spacing:0.05em;
+    text-transform:uppercase; text-decoration:none;
+  }
+
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <span class="eyebrow">Resolve Rehab · Tournament Check-In</span>
+  <div id="content">
+    <div class="status-panel">
+      <div class="tk-label">Loading your status...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const ticket = parseInt(params.get('ticket'), 10);
+  const content = document.getElementById('content');
+  let pollTimer = null;
+
+  function renderError(){
+    content.innerHTML = `
+      <div class="status-panel error-state">
+        <h1>No Ticket Found</h1>
+        <p>We couldn't find a check-in for this link. If you haven't checked in yet, use the QR code at the booth to get started.</p>
+        <a class="home-link" href="checkin.html">Go to Check-In</a>
+      </div>
+    `;
+  }
+
+  async function fetchStatus(){
+    if(!ticket || isNaN(ticket)){ renderError(); return; }
+    try{
+      const res = await window.storage.get('queue:'+ticket, true);
+      if(!res){ renderError(); return; }
+      const entry = JSON.parse(res.value);
+      await computePositionAndRender(entry);
+    }catch(e){
+      renderError();
+    }
+  }
+
+  async function computePositionAndRender(entry){
+    let position = null;
+    if(entry.status === 'waiting'){
+      position = 1;
+      try{
+        const list = await window.storage.list('queue:', true);
+        if(list && list.keys){
+          for(const k of list.keys){
+            if(k === 'queue:'+entry.ticket) continue;
+            const item = await window.storage.get(k, true);
+            if(item){
+              const other = JSON.parse(item.value);
+              if(other.status === 'waiting' && other.ticket < entry.ticket) position++;
+            }
+          }
+        }
+      }catch(e){ position = null; }
+    }
+    render(entry, position);
+  }
+
+  function minsSince(iso){
+    return Math.max(0, Math.round((Date.now() - new Date(iso).getTime())/60000));
+  }
+
+  function render(entry, position){
+    let panelClass = '';
+    let statusLine = '';
+    let statusSub = '';
+    let extraRow = '';
+
+    if(entry.priority && entry.status !== 'completed'){
+      panelClass = 'urgent';
+      statusLine = "Please come to the booth now";
+      statusSub = "Don't wait for your ticket to be called — a possible head injury needs attention right away.";
+    } else if(entry.status === 'waiting'){
+      panelClass = '';
+      statusLine = position === 1 ? "You're next in line" : `${position} ${position===1?'person':'people'} ahead of you`;
+      statusSub = "Keep your phone handy. This page updates on its own, so feel free to head back to the field.";
+      extraRow = `
+        <div class="pos-row">
+          <div class="pos-item"><div class="n">${position ?? '—'}</div><div class="l">Ahead of you</div></div>
+          <div class="pos-item"><div class="n">${minsSince(entry.submittedAt)}</div><div class="l">Min waiting</div></div>
+        </div>
+      `;
+    } else if(entry.status === 'called'){
+      panelClass = 'called';
+      statusLine = `You're up! Station ${entry.station ?? ''}`;
+      statusSub = "Head to the Resolve Rehab booth now and check in with staff.";
+    } else if(entry.status === 'in-treatment'){
+      panelClass = 'treatment';
+      statusLine = "You're being seen";
+      statusSub = "A kinesiologist is currently working with you at the booth.";
+    } else if(entry.status === 'completed'){
+      panelClass = 'completed';
+      statusLine = "All done — thanks for coming!";
+      statusSub = "Hope you're feeling better. Enjoy the rest of the tournament.";
+    } else if(entry.status === 'no-show'){
+      panelClass = '';
+      statusLine = "We tried to call you";
+      statusSub = "Looks like we missed you. Head to the booth and check in with staff to get back in the queue.";
+    }
+
+    content.innerHTML = `
+      <div class="status-panel ${panelClass}">
+        <div class="tk-label">Your Ticket</div>
+        <div class="tk-num">#${String(entry.ticket).padStart(2,'0')}</div>
+        <div class="status-line">${statusLine}</div>
+        <div class="status-sub">${statusSub}</div>
+        ${extraRow}
+      </div>
+      <div class="below">
+        <p>${entry.name.split(' ')[0]} · ${entry.area}${entry.team ? ' · '+entry.team : ''}</p>
+      </div>
+      ${entry.status==='waiting' || entry.status==='called' ? `
+        <div class="refresh-note"><span class="dot"></span>Updating automatically</div>
+      ` : ''}
+    `;
+  }
+
+  fetchStatus();
+  pollTimer = setInterval(fetchStatus, 5000);
+</script>
+
+</body>
+</html>

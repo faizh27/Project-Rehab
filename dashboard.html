@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resolve Rehab — Staff Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2A28; --ink-soft:#43574F;
+    --stone:#E9E4D6; --mist:#DCE3DD; --white:#FBFAF6;
+    --forest:#2F5D50; --forest-dark:#213F37;
+    --gold:#B4842E; --gold-light:#D9AE6C;
+    --alert:#A8442E; --alert-bg:#F3E2DC;
+    --line:rgba(27,42,40,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--stone); color:var(--ink);
+    font-family:'Source Sans 3', sans-serif; min-height:100vh; padding-bottom:60px;
+  }
+  h1,h2,h3{font-family:'Big Shoulders Display', sans-serif; font-weight:800; text-transform:uppercase; letter-spacing:0.01em; line-height:0.96; margin:0;}
+  .mono{font-family:'JetBrains Mono', monospace;}
+
+  /* ---- PIN gate ---- */
+  #pinGate{
+    position:fixed; inset:0; background:var(--forest-dark); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .pin-card{background:var(--white); border-radius:4px; padding:36px 32px; max-width:340px; width:100%; text-align:center;}
+  .pin-card h2{font-size:1.4rem; color:var(--ink);}
+  .pin-card p{margin-top:8px; color:var(--ink-soft); font-size:0.9rem;}
+  .pin-input{
+    width:100%; margin-top:20px; padding:14px; font-size:1.4rem; text-align:center;
+    letter-spacing:0.4em; border:1.5px solid var(--line); border-radius:3px; font-family:'JetBrains Mono', monospace;
+  }
+  .pin-input:focus{outline:2px solid var(--gold); border-color:var(--gold);}
+  .pin-btn{
+    width:100%; margin-top:14px; padding:13px; border:none; border-radius:3px;
+    background:var(--forest); color:var(--white); font-family:'JetBrains Mono', monospace;
+    font-size:0.78rem; letter-spacing:0.06em; text-transform:uppercase; cursor:pointer;
+  }
+  .pin-err{color:var(--alert); font-size:0.82rem; margin-top:10px; display:none;}
+  .pin-err.show{display:block;}
+
+  /* ---- Top bar ---- */
+  .topbar{background:var(--forest-dark); color:var(--white); padding:16px 22px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+  .topbar .name{font-size:1.3rem;}
+  .topbar .tag{font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:0.08em; color:var(--gold-light); text-transform:uppercase;}
+  .live-dot{display:inline-flex; align-items:center; gap:6px; font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:rgba(251,250,246,0.75); text-transform:uppercase; letter-spacing:0.06em;}
+  .live-dot .dot{width:7px; height:7px; border-radius:50%; background:#7FBF8C; animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.3;}}
+
+  .wrap{max-width:1080px; margin:0 auto; padding:26px 20px;}
+
+  /* ---- Summary tiles ---- */
+  .summary-row{display:grid; grid-template-columns:repeat(4,1fr); gap:2px; background:var(--line); border-radius:4px; overflow:hidden; margin-bottom:26px;}
+  @media (max-width:700px){ .summary-row{grid-template-columns:repeat(2,1fr);} }
+  .summary-tile{background:var(--white); padding:18px 20px;}
+  .summary-tile .num{font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:2.2rem; color:var(--forest); line-height:1;}
+  .summary-tile .lbl{margin-top:4px; font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--ink-soft);}
+
+  /* ---- Stations ---- */
+  .section-title{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .section-title h2{font-size:1.3rem;}
+  .station-settings{display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono', monospace; font-size:0.72rem; color:var(--ink-soft);}
+  .station-settings input{width:44px; padding:6px; border:1px solid var(--line); border-radius:3px; text-align:center; font-family:'JetBrains Mono', monospace;}
+
+  .station-row{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin-bottom:34px;}
+  .station-card{background:var(--white); border:1px solid var(--line); border-radius:4px; padding:16px 18px;}
+  .station-card.occupied{border-color:var(--forest); background:#EAF0EC;}
+  .station-card .st-label{font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-soft);}
+  .station-card .st-name{font-size:1.15rem; font-weight:700; margin-top:6px;}
+  .station-card .st-status{font-size:0.82rem; color:var(--ink-soft); margin-top:2px;}
+  .station-card .st-empty{color:#8A9791; font-style:italic; font-size:0.92rem; margin-top:6px;}
+  .station-card button{
+    margin-top:10px; width:100%; padding:9px; border:1px solid var(--forest); background:none;
+    color:var(--forest); border-radius:3px; font-family:'JetBrains Mono', monospace; font-size:0.7rem;
+    letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
+  }
+  .station-card button:hover{background:var(--forest); color:var(--white);}
+
+  /* ---- Queue list ---- */
+  .tabs{display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--line);}
+  .tab-btn{
+    padding:10px 16px; background:none; border:none; cursor:pointer;
+    font-family:'JetBrains Mono', monospace; font-size:0.75rem; letter-spacing:0.05em;
+    text-transform:uppercase; color:var(--ink-soft); border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .tab-btn.active{color:var(--ink); border-bottom-color:var(--gold);}
+
+  .queue-card{
+    background:var(--white); border:1px solid var(--line); border-radius:4px;
+    padding:18px 20px; margin-bottom:12px; display:grid; grid-template-columns:1fr auto; gap:16px; align-items:start;
+  }
+  .queue-card.urgent{border-color:var(--alert); background:var(--alert-bg);}
+  @media (max-width:640px){ .queue-card{grid-template-columns:1fr;} }
+
+  .qc-main{min-width:0;}
+  .qc-top{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .qc-ticket{font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:1.5rem; color:var(--forest);}
+  .qc-name{font-size:1.15rem; font-weight:700;}
+  .qc-team{font-size:0.85rem; color:var(--ink-soft);}
+  .qc-badges{display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;}
+  .badge{
+    font-family:'JetBrains Mono', monospace; font-size:0.66rem; letter-spacing:0.04em;
+    text-transform:uppercase; padding:4px 10px; border-radius:100px; background:var(--mist); color:var(--ink-soft);
+  }
+  .badge.pain{background:#EFE2C9; color:#8A6318;}
+  .badge.urgent-badge{background:var(--alert); color:var(--white);}
+  .badge.status-waiting{background:var(--mist); color:var(--ink-soft);}
+  .badge.status-called{background:#EFE2C9; color:#8A6318;}
+  .badge.status-treatment{background:#D6E5DA; color:var(--forest);}
+  .qc-notes{margin-top:8px; font-size:0.88rem; color:var(--ink-soft); font-style:italic;}
+  .qc-meta{margin-top:10px; display:flex; gap:16px; flex-wrap:wrap; font-family:'JetBrains Mono', monospace; font-size:0.75rem; color:var(--ink-soft);}
+  .qc-meta a{color:var(--forest);}
+  .qc-wait{font-weight:600;}
+
+  .qc-actions{display:flex; flex-direction:column; gap:8px; min-width:150px;}
+  .station-pick{display:flex; gap:6px; flex-wrap:wrap;}
+  .station-pick button{
+    padding:8px 12px; border:1px solid var(--forest); background:none; color:var(--forest);
+    border-radius:3px; font-family:'JetBrains Mono', monospace; font-size:0.72rem; cursor:pointer;
+  }
+  .station-pick button:hover{background:var(--forest); color:var(--white);}
+  .act-btn{
+    padding:10px 14px; border:none; border-radius:3px; cursor:pointer;
+    font-family:'JetBrains Mono', monospace; font-size:0.72rem; letter-spacing:0.04em; text-transform:uppercase;
+  }
+  .act-btn.primary{background:var(--forest); color:var(--white);}
+  .act-btn.primary:hover{background:var(--forest-dark);}
+  .act-btn.ghost{background:none; border:1px solid var(--line); color:var(--ink-soft);}
+  .act-btn.ghost:hover{border-color:var(--alert); color:var(--alert);}
+
+  .empty-state{
+    text-align:center; padding:50px 20px; color:var(--ink-soft); font-size:0.95rem;
+  }
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:var(--white); padding:12px 22px; border-radius:4px;
+    font-size:0.88rem; opacity:0; pointer-events:none; transition:all .25s ease; z-index:100;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+</head>
+<body>
+
+<div id="pinGate">
+  <div class="pin-card">
+    <h2>Staff Access</h2>
+    <p>Enter the code given by your event lead to open the queue dashboard.</p>
+    <input type="password" id="pinInput" class="pin-input" inputmode="numeric" maxlength="6" placeholder="••••">
+    <button class="pin-btn" id="pinSubmit">Unlock Dashboard</button>
+    <div class="pin-err" id="pinErr">That code isn't right — try again.</div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div>
+    <div class="name">Resolve Rehab</div>
+    <div class="tag">Staff Dashboard</div>
+  </div>
+  <div class="live-dot"><span class="dot"></span>Live · updates every few seconds</div>
+</div>
+
+<div class="wrap">
+
+  <div class="summary-row">
+    <div class="summary-tile"><div class="num" id="sumWaiting">0</div><div class="lbl">Waiting</div></div>
+    <div class="summary-tile"><div class="num" id="sumTreatment">0</div><div class="lbl">In Treatment</div></div>
+    <div class="summary-tile"><div class="num" id="sumCompleted">0</div><div class="lbl">Completed Today</div></div>
+    <div class="summary-tile"><div class="num" id="sumLongest">—</div><div class="lbl">Longest Wait</div></div>
+  </div>
+
+  <div class="section-title">
+    <h2>Stations</h2>
+    <div class="station-settings">
+      <span>Stations:</span>
+      <input type="number" id="stationCount" min="1" max="8" value="2">
+    </div>
+  </div>
+  <div class="station-row" id="stationRow"></div>
+
+  <div class="section-title">
+    <h2>Queue</h2>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="active">Active</button>
+    <button class="tab-btn" data-tab="history">History</button>
+  </div>
+  <div id="queueList"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /* ====== CHANGE THIS CODE BEFORE THE EVENT ====== */
+  const STAFF_PIN = "2026";
+  /* ================================================ */
+
+  document.getElementById('pinSubmit').addEventListener('click', checkPin);
+  document.getElementById('pinInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') checkPin(); });
+  function checkPin(){
+    const val = document.getElementById('pinInput').value.trim();
+    if(val === STAFF_PIN){
+      document.getElementById('pinGate').style.display = 'none';
+      startPolling();
+    } else {
+      document.getElementById('pinErr').classList.add('show');
+    }
+  }
+
+  let stationCount = 2;
+  let activeTab = 'active';
+  let pollTimer = null;
+
+  const toastEl = document.getElementById('toast');
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(()=>toastEl.classList.remove('show'), 2200);
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      activeTab = btn.dataset.tab;
+      renderFromCache();
+    });
+  });
+
+  const stationInput = document.getElementById('stationCount');
+  stationInput.addEventListener('change', async ()=>{
+    let n = parseInt(stationInput.value, 10);
+    if(isNaN(n) || n < 1) n = 1;
+    if(n > 8) n = 8;
+    stationInput.value = n;
+    stationCount = n;
+    try{ await window.storage.set('queue-settings', JSON.stringify({stationCount:n}), true); }catch(e){}
+    renderFromCache();
+  });
+
+  async function loadStationSettings(){
+    try{
+      const res = await window.storage.get('queue-settings', true);
+      if(res){
+        const s = JSON.parse(res.value);
+        if(s.stationCount){ stationCount = s.stationCount; stationInput.value = s.stationCount; }
+      }
+    }catch(e){ /* no settings saved yet, use default */ }
+  }
+
+  let cachedEntries = [];
+
+  async function fetchQueue(){
+    try{
+      const list = await window.storage.list('queue:', true);
+      const entries = [];
+      if(list && list.keys){
+        for(const k of list.keys){
+          try{
+            const item = await window.storage.get(k, true);
+            if(item){ entries.push(JSON.parse(item.value)); }
+          }catch(e){ /* skip unreadable entry */ }
+        }
+      }
+      cachedEntries = entries;
+      renderAll();
+    }catch(e){
+      console.error('Queue fetch failed', e);
+    }
+  }
+
+  function timeSince(iso){
+    const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime())/60000));
+    return mins + ' min';
+  }
+
+  function renderAll(){
+    renderSummary();
+    renderStations();
+    renderFromCache();
+  }
+
+  function renderSummary(){
+    const waiting = cachedEntries.filter(e=>e.status==='waiting');
+    const treatment = cachedEntries.filter(e=>e.status==='in-treatment');
+    const completed = cachedEntries.filter(e=>e.status==='completed');
+    document.getElementById('sumWaiting').textContent = waiting.length;
+    document.getElementById('sumTreatment').textContent = treatment.length;
+    document.getElementById('sumCompleted').textContent = completed.length;
+    if(waiting.length){
+      const longest = Math.max(...waiting.map(e=> (Date.now()-new Date(e.submittedAt).getTime())/60000 ));
+      document.getElementById('sumLongest').textContent = Math.round(longest) + ' min';
+    } else {
+      document.getElementById('sumLongest').textContent = '—';
+    }
+  }
+
+  function renderStations(){
+    const row = document.getElementById('stationRow');
+    row.innerHTML = '';
+    for(let i=1; i<=stationCount; i++){
+      const occ = cachedEntries.find(e => e.station === i && (e.status==='called' || e.status==='in-treatment'));
+      const card = document.createElement('div');
+      card.className = 'station-card' + (occ ? ' occupied' : '');
+      if(occ){
+        card.innerHTML = `
+          <div class="st-label">Station ${i}</div>
+          <div class="st-name">#${occ.ticket} · ${escapeHtml(occ.name)}</div>
+          <div class="st-status">${occ.status === 'called' ? 'Called — waiting to start' : 'In treatment'}</div>
+          ${occ.status === 'in-treatment' ? `<button data-complete="${occ.ticket}">Mark Complete</button>` : ''}
+        `;
+      } else {
+        card.innerHTML = `<div class="st-label">Station ${i}</div><div class="st-empty">Available</div>`;
+      }
+      row.appendChild(card);
+    }
+    row.querySelectorAll('[data-complete]').forEach(btn=>{
+      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.complete,10), {status:'completed', completedAt:new Date().toISOString()}, 'Marked complete'));
+    });
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  function renderFromCache(){
+    const container = document.getElementById('queueList');
+    container.innerHTML = '';
+
+    let list;
+    if(activeTab === 'active'){
+      list = cachedEntries.filter(e => ['waiting','called','in-treatment'].includes(e.status));
+      list.sort((a,b)=>{
+        if(a.priority !== b.priority) return a.priority ? -1 : 1;
+        const order = {'in-treatment':0,'called':1,'waiting':2};
+        if(order[a.status] !== order[b.status]) return order[a.status]-order[b.status];
+        return a.ticket - b.ticket;
+      });
+    } else {
+      list = cachedEntries.filter(e => ['completed','no-show'].includes(e.status));
+      list.sort((a,b)=> b.ticket - a.ticket);
+    }
+
+    if(list.length === 0){
+      container.innerHTML = `<div class="empty-state">${activeTab==='active' ? 'No one in the queue right now.' : 'No history yet.'}</div>`;
+      return;
+    }
+
+    list.forEach(entry=>{
+      const card = document.createElement('div');
+      card.className = 'queue-card' + (entry.priority && entry.status!=='completed' && entry.status!=='no-show' ? ' urgent' : '');
+
+      const statusBadgeClass = entry.status==='waiting' ? 'status-waiting' : entry.status==='called' ? 'status-called' : entry.status==='in-treatment' ? 'status-treatment' : '';
+      const statusLabel = {waiting:'Waiting', called:'Called', 'in-treatment':'In Treatment', completed:'Completed', 'no-show':'No-Show'}[entry.status];
+
+      let actionsHtml = '';
+      if(entry.status === 'waiting'){
+        let stationBtns = '';
+        for(let i=1;i<=stationCount;i++){ stationBtns += `<button data-call="${entry.ticket}" data-station="${i}">Station ${i}</button>`; }
+        actionsHtml = `<div class="station-pick">${stationBtns}</div><button class="act-btn ghost" data-noshow="${entry.ticket}">No-Show</button>`;
+      } else if(entry.status === 'called'){
+        actionsHtml = `<button class="act-btn primary" data-start="${entry.ticket}">Start Treatment</button><button class="act-btn ghost" data-noshow="${entry.ticket}">No-Show</button>`;
+      } else if(entry.status === 'in-treatment'){
+        actionsHtml = `<button class="act-btn primary" data-complete="${entry.ticket}">Complete</button>`;
+      } else {
+        actionsHtml = `<button class="act-btn ghost" data-reopen="${entry.ticket}">Reopen</button>`;
+      }
+
+      card.innerHTML = `
+        <div class="qc-main">
+          <div class="qc-top">
+            <span class="qc-ticket">#${entry.ticket}</span>
+            <span class="qc-name">${escapeHtml(entry.name)}</span>
+            ${entry.team ? `<span class="qc-team">${escapeHtml(entry.team)}</span>` : ''}
+          </div>
+          <div class="qc-badges">
+            ${entry.priority ? '<span class="badge urgent-badge">Head / Concussion</span>' : `<span class="badge">${escapeHtml(entry.area)}</span>`}
+            ${entry.pain ? `<span class="badge pain">Pain ${entry.pain}/5</span>` : ''}
+            <span class="badge ${statusBadgeClass}">${statusLabel}${entry.station ? ' · Station '+entry.station : ''}</span>
+          </div>
+          ${entry.notes ? `<div class="qc-notes">"${escapeHtml(entry.notes)}"</div>` : ''}
+          <div class="qc-meta">
+            <span class="qc-wait">${timeSince(entry.submittedAt)} ${entry.status==='completed'||entry.status==='no-show' ? 'total' : 'waiting'}</span>
+            <a href="tel:${entry.phone}">${escapeHtml(entry.phone)}</a>
+          </div>
+        </div>
+        <div class="qc-actions">${actionsHtml}</div>
+      `;
+      container.appendChild(card);
+    });
+
+    container.querySelectorAll('[data-call]').forEach(btn=>{
+      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.call,10), {status:'called', station:parseInt(btn.dataset.station,10), calledAt:new Date().toISOString()}, 'Calling #'+btn.dataset.call));
+    });
+    container.querySelectorAll('[data-start]').forEach(btn=>{
+      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.start,10), {status:'in-treatment', startedAt:new Date().toISOString()}, 'Treatment started'));
+    });
+    container.querySelectorAll('[data-complete]').forEach(btn=>{
+      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.complete,10), {status:'completed', completedAt:new Date().toISOString()}, 'Marked complete'));
+    });
+    container.querySelectorAll('[data-noshow]').forEach(btn=>{
+      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.noshow,10), {status:'no-show'}, 'Marked no-show'));
+    });
+    container.querySelectorAll('[data-reopen]').forEach(btn=>{
+      btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.reopen,10), {status:'waiting', station:null}, 'Returned to queue'));
+    });
+  }
+
+  async function updateEntry(ticket, changes, toastMsg){
+    try{
+      const res = await window.storage.get('queue:'+ticket, true);
+      if(!res) return;
+      const entry = JSON.parse(res.value);
+      Object.assign(entry, changes);
+      await window.storage.set('queue:'+ticket, JSON.stringify(entry), true);
+      toast(toastMsg);
+      fetchQueue();
+    }catch(e){
+      console.error(e);
+      toast('Update failed — try again');
+    }
+  }
+
+  function startPolling(){
+    loadStationSettings().then(fetchQueue);
+    pollTimer = setInterval(fetchQueue, 4000);
+  }
+</script>
+
+</body>
+</html>
