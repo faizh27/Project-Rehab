@@ -113,6 +113,23 @@
     text-align:center; padding:50px 20px; color:var(--ink-soft); font-size:0.95rem;
   }
 
+  .staff-notes{margin-top:12px; padding-top:12px; border-top:1px solid var(--line);}
+  .staff-notes label{
+    display:block; margin-bottom:6px; font-family:'JetBrains Mono', monospace; font-size:0.66rem;
+    letter-spacing:0.04em; text-transform:uppercase; color:var(--ink-soft);
+  }
+  .staff-notes textarea{
+    width:100%; min-height:54px; resize:vertical; border:1.5px solid var(--line); border-radius:3px;
+    padding:8px 10px; font-family:'Source Sans 3', sans-serif; font-size:0.86rem; color:var(--ink);
+    background:var(--stone); line-height:1.45;
+  }
+  .staff-notes textarea:focus{outline:none; border-color:var(--gold);}
+  .staff-notes .sn-status{
+    margin-top:4px; font-family:'JetBrains Mono', monospace; font-size:0.64rem; color:var(--ink-soft);
+    text-transform:uppercase; letter-spacing:0.04em; min-height:1em;
+  }
+  .staff-notes .sn-status.saved{color:var(--forest);}
+
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
     background:var(--ink); color:var(--white); padding:12px 22px; border-radius:4px;
@@ -247,6 +264,16 @@
 
   function renderFromCache(){
     const container = document.getElementById('queueList');
+
+    // Preserve focus/cursor in a staff-notes textarea if the re-render is happening while someone's typing
+    const active = document.activeElement;
+    let focusedTicket = null, selStart = null, selEnd = null;
+    if(active && active.dataset && active.dataset.staffNotes){
+      focusedTicket = active.dataset.staffNotes;
+      selStart = active.selectionStart;
+      selEnd = active.selectionEnd;
+    }
+
     container.innerHTML = '';
 
     let list;
@@ -320,11 +347,50 @@
             <span class="qc-wait">${timeSince(entry.submittedAt)} ${entry.status==='completed'||entry.status==='no-show' ? 'total' : 'waiting'}</span>
             <a href="tel:${entry.phone}">${escapeHtml(entry.phone)}</a>
           </div>
+          ${activeTab === 'history' ? `
+            <div class="staff-notes">
+              <label for="sn-${entry.ticket}">Staff Notes</label>
+              <textarea id="sn-${entry.ticket}" data-staff-notes="${entry.ticket}" placeholder="Follow-up notes, referrals, anything for next time...">${escapeHtml(entry.staffNotes)}</textarea>
+              <div class="sn-status" id="sn-status-${entry.ticket}"></div>
+            </div>
+          ` : ''}
         </div>
         <div class="qc-actions">${actionsHtml}</div>
       `;
       container.appendChild(card);
     });
+
+    if(activeTab === 'history'){
+      container.querySelectorAll('[data-staff-notes]').forEach(el=>{
+        const ticket = el.dataset.staffNotes;
+        const statusEl = document.getElementById('sn-status-' + ticket);
+        let timer = null;
+        el.addEventListener('input', ()=>{
+          statusEl.textContent = 'Editing…';
+          statusEl.className = 'sn-status';
+          clearTimeout(timer);
+          timer = setTimeout(async ()=>{
+            try{
+              await updateDoc(doc(db, 'queue', String(ticket)), { staffNotes: el.value });
+              statusEl.textContent = 'Saved';
+              statusEl.className = 'sn-status saved';
+            }catch(e){
+              console.error(e);
+              statusEl.textContent = 'Save failed';
+              statusEl.className = 'sn-status';
+            }
+          }, 800);
+        });
+      });
+
+      if(focusedTicket !== null){
+        const restored = document.getElementById('sn-' + focusedTicket);
+        if(restored){
+          restored.focus();
+          try{ restored.setSelectionRange(selStart, selEnd); }catch(e){}
+        }
+      }
+    }
 
     container.querySelectorAll('[data-call]').forEach(btn=>{
       btn.addEventListener('click', ()=> updateEntry(parseInt(btn.dataset.call,10), {status:'called', calledAt:new Date().toISOString()}, 'Calling #'+btn.dataset.call));
