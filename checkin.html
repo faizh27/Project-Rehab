@@ -158,28 +158,6 @@
   .err.show{display:block;}
   .field.invalid input{border-color:var(--alert);}
 
-  /* Confirmation screen */
-  .confirm{
-    display:none; text-align:center; padding:50px 20px 20px;
-  }
-  .confirm.show{display:block;}
-  form.hide{display:none;}
-  .ticket{
-    background:var(--forest-dark); color:var(--white); border-radius:4px;
-    padding:32px 24px; margin:20px 0 26px;
-  }
-  .ticket .tk-label{font-family:'JetBrains Mono', monospace; font-size:0.72rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold-light);}
-  .ticket .tk-num{font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:4.5rem; line-height:1; margin:6px 0;}
-  .ticket .tk-pos{font-size:0.98rem; color:rgba(251,250,246,0.85); margin-top:8px;}
-  .confirm h2{font-size:1.6rem;}
-  .confirm p{margin-top:12px; color:var(--ink-soft); font-size:0.98rem; line-height:1.6;}
-  .confirm .urgent-note{margin-top:20px; text-align:left;}
-  .new-checkin{
-    margin-top:26px; background:none; border:1px solid var(--line); color:var(--ink-soft);
-    font-family:'JetBrains Mono', monospace; font-size:0.75rem; letter-spacing:0.05em;
-    text-transform:uppercase; padding:12px 20px; border-radius:3px; cursor:pointer;
-  }
-
   .loading-overlay{
     position:fixed; inset:0; background:rgba(27,42,40,0.4); display:none;
     align-items:center; justify-content:center; z-index:50;
@@ -294,23 +272,6 @@
     </div>
   </div>
 
-  <div class="confirm" id="confirmScreen">
-    <span class="eyebrow">You're Checked In</span>
-    <div class="ticket">
-      <div class="tk-label">Your Ticket</div>
-      <div class="tk-num" id="ticketNum">#00</div>
-      <div class="tk-pos" id="ticketPos">You're next in line.</div>
-    </div>
-    <h2>Sit tight, <span id="confirmName">friend</span>.</h2>
-    <p>Keep your phone handy — a staff member will call your name when it's your turn. Feel free to head back to the field; you don't need to wait at the booth.</p>
-    <div class="urgent-note" id="confirmUrgentNote">
-      <strong>Please tell a staff member right away</strong>
-      Head injuries and possible concussions shouldn't wait in the queue — come find us at the booth now.
-    </div>
-    <a class="new-checkin" id="statusLink" style="display:inline-block; text-decoration:none; background:var(--forest); color:var(--white); border-color:var(--forest); margin-right:10px;">View Live Status</a>
-    <button type="button" class="new-checkin" id="newCheckinBtn">Check In Someone Else</button>
-  </div>
-
 </div>
 
 <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
@@ -318,14 +279,13 @@
 <script type="module">
   import { db } from './firebase-config.js';
   import {
-    doc, runTransaction, setDoc, collection, getDocs, query, where
+    doc, runTransaction, setDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const form = document.getElementById('intakeForm');
   const areaGrid = document.getElementById('areaGrid');
   const painRow = document.getElementById('painRow');
   const urgentNote = document.getElementById('urgentNote');
-  const confirmUrgentNote = document.getElementById('confirmUrgentNote');
   const loadingOverlay = document.getElementById('loadingOverlay');
 
   const consentModalOverlay = document.getElementById('consentModalOverlay');
@@ -446,28 +406,8 @@
 
       await setDoc(doc(db, 'queue', String(ticketNum)), entry);
 
-      let position = 1;
-      try{
-        const waitingQuery = query(collection(db, 'queue'), where('status', '==', 'waiting'));
-        const snap = await getDocs(waitingQuery);
-        snap.forEach(d=>{
-          const data = d.data();
-          if(data.ticket < ticketNum) position++;
-        });
-      }catch(err){
-        position = null;
-      }
-
-      document.getElementById('statusLink').href = 'status.html?ticket=' + ticketNum;
-      document.getElementById('ticketNum').textContent = '#' + String(ticketNum).padStart(2,'0');
-      document.getElementById('confirmName').textContent = name.split(' ')[0];
-      document.getElementById('ticketPos').textContent = position
-        ? (position === 1 ? "You're next in line." : `${position} ${position===1?'person':'people'} ahead of you.`)
-        : "You're checked in.";
-      confirmUrgentNote.classList.toggle('show', isUrgent);
-
-      form.classList.add('hide');
-      document.getElementById('confirmScreen').classList.add('show');
+      window.location.href = 'status.html?ticket=' + ticketNum;
+      return;
 
     }catch(err){
       alert('Something went wrong submitting your check-in. Please try again, or tell a staff member at the booth.');
@@ -476,18 +416,6 @@
       submitBtn.disabled = false;
       loadingOverlay.classList.remove('show');
     }
-  });
-
-  document.getElementById('newCheckinBtn').addEventListener('click', ()=>{
-    form.reset();
-    selectedAreas = [];
-    selectedPain = null;
-    areaGrid.querySelectorAll('.tap-btn').forEach(b=>b.classList.remove('selected'));
-    painRow.querySelectorAll('.pain-btn').forEach(b=>b.classList.remove('selected'));
-    urgentNote.classList.remove('show');
-    document.getElementById('confirmScreen').classList.remove('show');
-    form.classList.remove('hide');
-    window.scrollTo({top:0, behavior:'auto'});
   });
 </script>
 
