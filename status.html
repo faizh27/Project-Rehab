@@ -64,6 +64,28 @@
     text-transform:uppercase; text-decoration:none;
   }
 
+  .specialists{margin-top:22px; display:none;}
+  .specialists .sp-eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:0.66rem; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--ink-soft); display:block; text-align:center; margin-bottom:12px;
+  }
+  .sp-list{display:flex; flex-direction:column; gap:10px;}
+  .sp-card{
+    display:flex; align-items:center; gap:14px; background:var(--white); border:1px solid var(--line);
+    border-radius:5px; padding:14px 16px; text-decoration:none; color:inherit; transition:border-color .15s ease;
+  }
+  .sp-card:hover{border-color:var(--gold);}
+  .sp-avatar{
+    width:48px; height:48px; border-radius:50%; flex-shrink:0; background:var(--forest);
+    color:var(--white); display:flex; align-items:center; justify-content:center;
+    font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:1.15rem;
+  }
+  .sp-info{flex:1; min-width:0;}
+  .sp-name{font-weight:700; font-size:0.96rem; color:var(--ink);}
+  .sp-role{font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--gold);}
+  .sp-blurb{font-size:0.82rem; color:var(--ink-soft); margin-top:3px; line-height:1.4;}
+  .sp-arrow{flex-shrink:0; color:var(--ink-soft); font-size:1.1rem;}
+
   @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
 </style>
 </head>
@@ -74,6 +96,30 @@
   <div id="content">
     <div class="status-panel">
       <div class="tk-label">Loading your status...</div>
+    </div>
+  </div>
+
+  <div class="specialists" id="specialistsPromo">
+    <span class="sp-eyebrow">While You Wait — Meet Our Specialists</span>
+    <div class="sp-list">
+      <a class="sp-card" href="https://linktr.ee/drsimranhayer" target="_blank" rel="noopener">
+        <div class="sp-avatar">SH</div>
+        <div class="sp-info">
+          <div class="sp-name">Dr. Simran Hayer, D.C</div>
+          <div class="sp-role">Chiropractor</div>
+          <div class="sp-blurb">Book online or follow along for tips.</div>
+        </div>
+        <div class="sp-arrow">&rarr;</div>
+      </a>
+      <a class="sp-card" href="https://performanceandrehabhub.com/index#home" target="_blank" rel="noopener">
+        <div class="sp-avatar">M</div>
+        <div class="sp-info">
+          <div class="sp-name">Munir</div>
+          <div class="sp-role">R.Kin — Registered Kinesiologist</div>
+          <div class="sp-blurb">Active rehab, personal training &amp; performance care.</div>
+        </div>
+        <div class="sp-arrow">&rarr;</div>
+      </a>
     </div>
   </div>
 </div>
@@ -98,6 +144,7 @@
         <a class="home-link" href="checkin.html">Go to Check-In</a>
       </div>
     `;
+    document.getElementById('specialistsPromo').style.display = 'none';
   }
 
   if(!ticket || isNaN(ticket)){
@@ -191,6 +238,9 @@
         <div class="refresh-note"><span class="dot"></span>Updating automatically</div>
       ` : ''}
     `;
+
+    const showSpecialists = entry.status === 'waiting' && !entry.priority;
+    document.getElementById('specialistsPromo').style.display = showSpecialists ? 'block' : 'none';
   }
 </script>
 
