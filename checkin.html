@@ -107,6 +107,40 @@
   }
   .consent input{width:20px; height:20px; margin-top:1px; flex-shrink:0; accent-color:var(--forest);}
   .consent label{font-size:0.88rem; color:var(--ink-soft); line-height:1.5;}
+  .consent-view-btn{
+    background:none; border:none; padding:0; margin-top:4px; display:inline-block;
+    font-family:'Source Sans 3', sans-serif; font-size:0.86rem; color:var(--forest);
+    text-decoration:underline; cursor:pointer;
+  }
+  .consent-view-btn:hover{color:var(--forest-dark);}
+
+  .consent-modal-overlay{
+    position:fixed; inset:0; background:rgba(27,42,40,0.55); z-index:80;
+    display:none; align-items:flex-end; justify-content:center; padding:0;
+  }
+  .consent-modal-overlay.show{display:flex;}
+  .consent-modal{
+    background:var(--white); border-radius:10px 10px 0 0; max-width:520px; width:100%;
+    max-height:80vh; display:flex; flex-direction:column; padding:22px 22px 20px;
+  }
+  @media (min-width:560px){
+    .consent-modal-overlay{align-items:center;}
+    .consent-modal{border-radius:8px; max-height:75vh;}
+  }
+  .consent-modal-head{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px;}
+  .consent-modal-head h2{font-size:1.25rem;}
+  .consent-modal-close{
+    background:none; border:none; font-size:1.4rem; line-height:1; color:var(--ink-soft);
+    cursor:pointer; padding:2px 6px; flex-shrink:0;
+  }
+  .consent-modal-body{overflow-y:auto; font-size:0.92rem; color:var(--ink-soft); line-height:1.65;}
+  .consent-modal-body p{margin:0 0 12px;}
+  .consent-modal-body p:last-child{margin-bottom:0;}
+  .consent-modal-done{
+    margin-top:16px; width:100%; padding:13px; border:none; border-radius:3px;
+    background:var(--forest); color:var(--white); font-family:'JetBrains Mono', monospace;
+    font-size:0.78rem; letter-spacing:0.05em; text-transform:uppercase; cursor:pointer;
+  }
 
   .submit-btn{
     width:100%; padding:18px; border:none; border-radius:3px;
@@ -237,12 +271,28 @@
 
     <div class="consent">
       <input type="checkbox" id="consent">
-      <label for="consent">I consent to receiving a kinesiology assessment and treatment at this event.</label>
+      <div>
+        <label for="consent">I consent to receiving a kinesiology assessment and treatment at this event, and to the release of my information as described in the full consent.</label>
+        <button type="button" class="consent-view-btn" id="consentViewBtn">Read the full consent</button>
+      </div>
     </div>
     <div class="err" id="err-consent" style="margin-top:-14px;">Please check the consent box to continue.</div>
 
     <button type="submit" class="submit-btn" id="submitBtn">Join the Queue</button>
   </form>
+
+  <div class="consent-modal-overlay" id="consentModalOverlay">
+    <div class="consent-modal">
+      <div class="consent-modal-head">
+        <h2>Consent</h2>
+        <button type="button" class="consent-modal-close" id="consentModalClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="consent-modal-body">
+        <p>I, the undersigned, do hereby consent to an examination and treatment performed by a certified practitioner at Resolve Health &amp; Rehab. I understand that this may involve the use of various physical and electrical modalities, and/or the use of exercise equipment. I authorize Resolve Health &amp; Rehab to communicate and release medical information with my medical healthcare professional, Law Firm(s)/Lawyers, and Insurance Companies involved in my direct care and/or case. As well as to obtain any medical records, including investigations and reports for the purpose of my care.</p>
+      </div>
+      <button type="button" class="consent-modal-done" id="consentModalDone">Close</button>
+    </div>
+  </div>
 
   <div class="confirm" id="confirmScreen">
     <span class="eyebrow">You're Checked In</span>
@@ -277,6 +327,21 @@
   const urgentNote = document.getElementById('urgentNote');
   const confirmUrgentNote = document.getElementById('confirmUrgentNote');
   const loadingOverlay = document.getElementById('loadingOverlay');
+
+  const consentModalOverlay = document.getElementById('consentModalOverlay');
+  function openConsentModal(){ consentModalOverlay.classList.add('show'); }
+  function closeConsentModal(){ consentModalOverlay.classList.remove('show'); }
+  document.getElementById('consentViewBtn').addEventListener('click', openConsentModal);
+  document.getElementById('consentModalClose').addEventListener('click', closeConsentModal);
+  document.getElementById('consentModalDone').addEventListener('click', closeConsentModal);
+  consentModalOverlay.addEventListener('click', (e)=>{
+    if(e.target === consentModalOverlay) closeConsentModal();
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && consentModalOverlay.classList.contains('show')) closeConsentModal();
+  });
+
+  const CONSENT_TEXT = "I, the undersigned, do hereby consent to an examination and treatment performed by a certified practitioner at Resolve Health & Rehab. I understand that this may involve the use of various physical and electrical modalities, and/or the use of exercise equipment. I authorize Resolve Health & Rehab to communicate and release medical information with my medical healthcare professional, Law Firm(s)/Lawyers, and Insurance Companies involved in my direct care and/or case. As well as to obtain any medical records, including investigations and reports for the purpose of my care.";
 
   let selectedAreas = [];
   let selectedPain = null;
@@ -374,7 +439,9 @@
         notes: notes || null,
         priority: isUrgent,
         status: 'waiting',
-        submittedAt: new Date().toISOString()
+        submittedAt: new Date().toISOString(),
+        consentText: CONSENT_TEXT,
+        consentAcceptedAt: new Date().toISOString()
       };
 
       await setDoc(doc(db, 'queue', String(ticketNum)), entry);
