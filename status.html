@@ -19,7 +19,7 @@
   body{
     margin:0; background:var(--stone); color:var(--ink);
     font-family:'Source Sans 3', sans-serif; min-height:100vh;
-    display:flex; align-items:center; justify-content:center; padding:20px;
+    display:flex; align-items:flex-start; justify-content:center; padding:32px 20px 40px;
   }
   h1,h2{font-family:'Big Shoulders Display', sans-serif; font-weight:800; text-transform:uppercase; letter-spacing:0.01em; line-height:0.96; margin:0;}
   .card{max-width:420px; width:100%;}
@@ -69,22 +69,20 @@
     font-family:'JetBrains Mono', monospace; font-size:0.66rem; letter-spacing:0.1em; text-transform:uppercase;
     color:var(--ink-soft); display:block; text-align:center; margin-bottom:12px;
   }
-  .sp-list{display:flex; flex-direction:column; gap:10px;}
+  .sp-grid{display:grid; grid-template-columns:1fr 1fr; gap:9px;}
   .sp-card{
-    display:flex; align-items:center; gap:14px; background:var(--white); border:1px solid var(--line);
-    border-radius:5px; padding:14px 16px; text-decoration:none; color:inherit; transition:border-color .15s ease;
+    display:flex; align-items:center; gap:10px; background:var(--white); border:1px solid var(--line);
+    border-radius:6px; padding:10px 12px; text-decoration:none; color:inherit; transition:border-color .15s ease;
   }
-  .sp-card:hover{border-color:var(--gold);}
+  .sp-card:active{border-color:var(--gold);}
   .sp-avatar{
-    width:48px; height:48px; border-radius:50%; flex-shrink:0; background:var(--forest);
+    width:38px; height:38px; border-radius:50%; flex-shrink:0; background:var(--forest);
     color:var(--white); display:flex; align-items:center; justify-content:center;
-    font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:1.15rem;
+    font-family:'Big Shoulders Display', sans-serif; font-weight:800; font-size:0.82rem;
   }
-  .sp-info{flex:1; min-width:0;}
-  .sp-name{font-weight:700; font-size:0.96rem; color:var(--ink);}
-  .sp-role{font-family:'JetBrains Mono', monospace; font-size:0.68rem; letter-spacing:0.04em; text-transform:uppercase; color:var(--gold);}
-  .sp-blurb{font-size:0.82rem; color:var(--ink-soft); margin-top:3px; line-height:1.4;}
-  .sp-arrow{flex-shrink:0; color:var(--ink-soft); font-size:1.1rem;}
+  .sp-info{min-width:0;}
+  .sp-name{font-weight:700; font-size:0.78rem; line-height:1.22; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .sp-role{font-family:'JetBrains Mono', monospace; font-size:0.58rem; letter-spacing:0.03em; text-transform:uppercase; color:var(--gold); margin-top:2px;}
 
   @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
 </style>
@@ -100,25 +98,49 @@
   </div>
 
   <div class="specialists" id="specialistsPromo">
-    <span class="sp-eyebrow">While You Wait — Meet Our Specialists</span>
-    <div class="sp-list">
+    <span class="sp-eyebrow">While You Wait — Meet The Team</span>
+    <div class="sp-grid">
+      <a class="sp-card" href="https://prosperhealth.ca/faraz-hassany" target="_blank" rel="noopener">
+        <div class="sp-avatar">FH</div>
+        <div class="sp-info">
+          <div class="sp-name">Faraz Hassany</div>
+          <div class="sp-role">R.Kin</div>
+        </div>
+      </a>
       <a class="sp-card" href="https://linktr.ee/drsimranhayer" target="_blank" rel="noopener">
         <div class="sp-avatar">SH</div>
         <div class="sp-info">
-          <div class="sp-name">Dr. Simran Hayer, D.C</div>
+          <div class="sp-name">Dr. Simran Hayer</div>
           <div class="sp-role">Chiropractor</div>
-          <div class="sp-blurb">Book online or follow along for tips.</div>
         </div>
-        <div class="sp-arrow">&rarr;</div>
       </a>
       <a class="sp-card" href="https://performanceandrehabhub.com/index#home" target="_blank" rel="noopener">
         <div class="sp-avatar">MW</div>
         <div class="sp-info">
           <div class="sp-name">Munir Wahedi</div>
-          <div class="sp-role">R.Kin — Registered Kinesiologist</div>
-          <div class="sp-blurb">Active rehab, personal training &amp; performance care.</div>
+          <div class="sp-role">R.Kin</div>
         </div>
-        <div class="sp-arrow">&rarr;</div>
+      </a>
+      <a class="sp-card" href="https://prosperhealth.ca/richard-hua" target="_blank" rel="noopener">
+        <div class="sp-avatar">RH</div>
+        <div class="sp-info">
+          <div class="sp-name">Richard Hua</div>
+          <div class="sp-role">RMT</div>
+        </div>
+      </a>
+      <a class="sp-card" href="https://prosperhealth.ca/gurneet-combow" target="_blank" rel="noopener">
+        <div class="sp-avatar">GC</div>
+        <div class="sp-info">
+          <div class="sp-name">Gurneet Combow</div>
+          <div class="sp-role">RMT</div>
+        </div>
+      </a>
+      <a class="sp-card" href="https://prosperhealth.ca/daiya-sabharwal" target="_blank" rel="noopener">
+        <div class="sp-avatar">DS</div>
+        <div class="sp-info">
+          <div class="sp-name">Daiya Sabharwal</div>
+          <div class="sp-role">RMT</div>
+        </div>
       </a>
     </div>
   </div>
